@@ -14,6 +14,11 @@ import logging
 
 from omni.isaac.lab.app import AppLauncher
 
+# 设置日志配置
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# 阶段1：参数解析阶段
+start_time_phase1 = time.time()
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RL-Games.")
 parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
@@ -40,10 +45,19 @@ if args_cli.video:
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args
 
+# 阶段1结束，记录时间
+end_time_phase1 = time.time()
+logging.info(f"参数解析阶段耗时: {end_time_phase1 - start_time_phase1:.2f} 秒")
+
+# 阶段2：应用启动阶段
+start_time_phase2 = time.time()
 # launch omniverse app
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
-print(f"launch omniverse app{time.time()}")
+logging.info(f"启动Omniverse应用")
+# 阶段2结束，记录时间
+end_time_phase2 = time.time()
+logging.info(f"应用启动阶段耗时: {end_time_phase2 - start_time_phase2:.2f} 秒")
 
 """Rest everything follows."""
 
@@ -76,6 +90,8 @@ from omni.isaac.lab_tasks.utils.wrappers.rl_games import RlGamesGpuEnv, RlGamesV
 @hydra_task_config(args_cli.task, "rl_games_cfg_entry_point")
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict):
     """Train with RL-Games agent."""
+    # 阶段3：环境与代理配置阶段
+    start_time_phase3 = time.time()
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
@@ -129,7 +145,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     rl_device = agent_cfg["params"]["config"]["device"]
     clip_obs = agent_cfg["params"]["env"].get("clip_observations", math.inf)
     clip_actions = agent_cfg["params"]["env"].get("clip_actions", math.inf)
+    # 阶段3结束，记录时间
+    end_time_phase3 = time.time()
+    logging.info(f"环境与代理配置阶段耗时: {end_time_phase3 - start_time_phase3:.2f} 秒")
 
+    # 阶段4：环境初始化阶段
+    start_time_phase4 = time.time()
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
     # wrap for video recording
@@ -160,6 +181,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # set number of actors into agent config
     agent_cfg["params"]["config"]["num_actors"] = env.unwrapped.num_envs
+    # 阶段4结束，记录时间
+    end_time_phase4 = time.time()
+    logging.info(f"环境初始化阶段耗时: {end_time_phase4 - start_time_phase4:.2f} 秒")
+
+    # 阶段5：模型训练阶段
+    start_time_phase5 = time.time()
     # create runner from rl-games
     runner = Runner(IsaacAlgoObserver())
     runner.load(agent_cfg)
@@ -171,13 +198,26 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         runner.run({"train": True, "play": False, "sigma": train_sigma, "checkpoint": resume_path})
     else:
         runner.run({"train": True, "play": False, "sigma": train_sigma})
+    # 阶段5结束，记录时间
+    end_time_phase5 = time.time()
+    logging.info(f"模型训练阶段耗时: {end_time_phase5 - start_time_phase5:.2f} 秒")
 
+    # 阶段6：关闭阶段（环境关闭）
+    start_time_phase6_env = time.time()
     # close the simulator
     env.close()
+    # 阶段6结束，记录时间
+    end_time_phase6_env = time.time()
+    logging.info(f"环境关闭阶段耗时: {end_time_phase6_env - start_time_phase6_env:.2f} 秒")
 
 
 if __name__ == "__main__":
     # run the main function
     main()
+    # 阶段6：关闭阶段（应用程序关闭）
+    start_time_phase6_app = time.time()
     # close sim app
     simulation_app.close()
+    # 阶段6结束，记录时间
+    end_time_phase6_app = time.time()
+    logging.info(f"应用程序关闭阶段耗时: {end_time_phase6_app - start_time_phase6_app:.2f} 秒")
