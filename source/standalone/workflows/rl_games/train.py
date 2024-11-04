@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description="Train an RL agent with RL-Games.")
 parser.add_argument(
     "--log_file",
     type=str,
-    default='/ssd/tianshihan/workspace/timed_issaclab/source/standalone/workflows/rl_games/timed.log',
+    default='/ssd/tianshihan/workspace/timed_issaclab/source/standalone/workflows/rl_games/logs/timed.log',
     help="Path to the log file."
 )
 parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
